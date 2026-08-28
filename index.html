@@ -1,289 +1,396 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>RetroStudio AI VisualSource Editor</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Consolas', 'Courier New', monospace, sans-serif; }
-    body { background: #1e1e24; color: #fff; overflow: hidden; height: 100vh; }
+<meta charset="UTF-8">
+<title>RetroStudio AI Visualizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; user-select: none; }
+  body { background-color: #1a1a1a; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* TopBar */
-    .topbar { height: 50px; background: #2a2a35; border-bottom: 2px solid #3a3a4c; display: flex; align-items: center; padding: 0 15px; gap: 12px; }
-    .btn { background: #4a4ae6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; transition: background 0.2s; }
-    .btn:hover { background: #5a5ae6; }
-    .btn-secondary { background: #4a4a5e; }
-    .btn-secondary:hover { background: #5a5a72; }
+  /* TopBar */
+  .topbar {
+    height: 45px; background-color: #2b2b2b; border-bottom: 2px solid #3a3a3a;
+    display: flex; align-items: center; padding: 0 15px; gap: 10px; z-index: 100;
+  }
+  .btn {
+    background: #3c3c3c; color: white; border: 1px solid #555; padding: 6px 14px;
+    border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
+  }
+  .btn:hover { background: #4a4a4a; }
+  .btn-primary { background: #007acc; border-color: #005999; }
+  .btn-primary:hover { background: #0098ff; }
 
-    /* Workspace Layout */
-    .workspace { display: flex; height: calc(100vh - 50px); position: relative; }
-    #canvas-container { flex: 1; background: #121216; position: relative; overflow: auto; cursor: grab; }
-    svg#connections { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  /* Main Workbench Area */
+  .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
+  
+  /* Grid Canvas Area */
+  .canvas-container {
+    flex: 1; position: relative; background-color: #222;
+    background-image: radial-gradient(#333 1px, transparent 1px);
+    background-size: 20px 20px; overflow: auto;
+  }
+  #svg-connections {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 1;
+  }
 
-    /* Inspector Panel (В точности как в RetroStudio) */
-    .inspector { width: 320px; background: #252530; border-left: 2px solid #3a3a4c; padding: 15px; display: none; overflow-y: auto; }
-    .inspector.active { display: block; }
-    .inspector-header { font-size: 14px; color: #ffaa00; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #3a3a4c; padding-bottom: 8px; }
-    
-    .prop-group { margin-bottom: 12px; }
-    .prop-group label { display: block; font-size: 11px; color: #8a8a9e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .prop-group input { width: 100%; background: #181820; border: 1px solid #4a4a5e; color: #4ae6a3; padding: 8px; border-radius: 4px; font-size: 12px; }
+  /* RetroStudio Block Styles */
+  .block {
+    position: absolute; width: 160px; height: 70px; border-radius: 10px;
+    padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    border: 2px solid rgba(255,255,255,0.2); z-index: 2; transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .block:hover { transform: scale(1.03); box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+  .block.selected { border-color: #fff; box-shadow: 0 0 12px #00aaff; }
+  .block-title { font-size: 13px; margin-bottom: 4px; pointer-events: none; }
+  .block-sub { font-size: 10px; opacity: 0.85; font-weight: normal; pointer-events: none; }
 
-    /* RetroStudio Block Styling */
-    .block { position: absolute; width: 180px; background: #323240; border: 2px solid #525266; border-radius: 6px; padding: 10px; cursor: pointer; user-select: none; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: border-color 0.2s, box-shadow 0.2s; }
-    .block:hover { border-color: #72728c; }
-    .block.selected { border-color: #ffaa00; box-shadow: 0 0 10px rgba(255,170,0,0.4); }
-    .block-header { font-weight: bold; font-size: 13px; color: #4ae6a3; margin-bottom: 4px; text-align: center; }
-    .block-type { font-size: 10px; color: #8a8a9e; text-align: center; margin-bottom: 8px; border-bottom: 1px solid #424254; padding-bottom: 4px; text-transform: uppercase; }
-    .block-preview { font-size: 10px; color: #ccc; background: #22222d; padding: 6px; border-radius: 3px; word-break: break-all; }
+  /* Block Colors (RetroStudio standard) */
+  .color-green { background: linear-gradient(180deg, #10b981 0%, #047857 100%); }
+  .color-purple { background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%); }
+  .color-blue { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); }
 
-    /* Modals */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); justify-content: center; align-items: center; z-index: 1000; }
-    .modal.active { display: flex; }
-    .modal-content { background: #2a2a35; padding: 20px; border-radius: 8px; width: 600px; border: 1px solid #4a4a5e; box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
-    .modal-content h3 { font-size: 16px; color: #fff; margin-bottom: 8px; }
-    .modal-content p { font-size: 12px; color: #aaa; margin-bottom: 12px; }
-    textarea { width: 100%; height: 220px; background: #181820; color: #a3e64a; border: 1px solid #4a4a5e; padding: 10px; border-radius: 4px; resize: none; font-size: 12px; line-height: 1.4; }
-    textarea:focus { outline: none; border-color: #6a6ae6; }
-    .modal-footer { margin-top: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px; }
-  </style>
+  /* Node Output Connectors */
+  .nodes-container {
+    position: absolute; bottom: -8px; left: 0; right: 0;
+    display: flex; justify-content: space-evenly; pointer-events: none;
+  }
+  .node-right {
+    position: absolute; right: -8px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  }
+  .node {
+    width: 14px; height: 14px; border-radius: 50%; border: 2px solid #1a1a1a;
+  }
+  .node-orange { background-color: #f97316; }
+  .node-red { background-color: #ef4444; }
+
+  /* Right Sidebar (Properties Inspector) */
+  .sidebar {
+    width: 320px; background-color: #111; border-left: 2px solid #333;
+    display: flex; flex-direction: column; z-index: 10;
+  }
+  .sidebar-header {
+    background: #000; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; border-bottom: 1px solid #333;
+  }
+  .sidebar-section { padding: 12px; border-bottom: 1px solid #222; }
+  .sidebar-section-title {
+    font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #fff;
+  }
+  .field-group { margin-bottom: 12px; }
+  .field-label { font-size: 11px; color: #aaa; margin-bottom: 4px; display: block; }
+  .field-input {
+    width: 100%; background: #222; border: 1px solid #444; color: #fff;
+    padding: 6px 8px; border-radius: 4px; font-size: 12px;
+  }
+  .field-checkbox { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 200;
+  }
+  .modal {
+    background: #222; border: 1px solid #444; border-radius: 8px; width: 550px;
+    padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+  }
+  .modal textarea {
+    width: 100%; height: 180px; background: #111; border: 1px solid #333; color: #00ff66;
+    font-family: monospace; padding: 10px; border-radius: 4px; resize: vertical; font-size: 12px;
+  }
+</style>
 </head>
 <body>
 
   <!-- TopBar -->
   <div class="topbar">
-    <button class="btn" onclick="openModal('prompt-modal')">Prompt</button>
+    <button class="btn btn-primary" onclick="openModal('prompt-modal')">Prompt</button>
     <button class="btn" onclick="openModal('load-modal')">Load</button>
+    <span style="font-size: 12px; color: #888; margin-left: auto;">RetroStudio AI Visualizer v1.0</span>
   </div>
 
-  <!-- Workspace -->
+  <!-- Main Canvas & Inspector Area -->
   <div class="workspace">
-    <div id="canvas-container">
-      <svg id="connections"></svg>
+    <div class="canvas-container" id="canvas">
+      <svg id="svg-connections"></svg>
       <div id="blocks-layer"></div>
     </div>
-    
-    <!-- Inspector (Свойства выбранного блока) -->
-    <div class="inspector" id="inspector">
-      <div class="inspector-header" id="insp-name">Настройки блока</div>
-      <div class="prop-group">
-        <label>Тип блока (Type)</label>
-        <input type="text" id="insp-type" readonly>
+
+    <!-- Inspector (Exact match to RetroStudio Inspector UI) -->
+    <div class="sidebar" id="inspector">
+      <div class="sidebar-header" id="inspect-header">Select a Block</div>
+      <div style="overflow-y: auto; flex: 1;">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Inputs</div>
+          <div id="inputs-container"></div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Outputs</div>
+          <div id="outputs-container"></div>
+        </div>
       </div>
-      <div class="prop-group">
-        <label>ID блока</label>
-        <input type="text" id="insp-id" readonly>
-      </div>
-      <div id="dynamic-inputs"></div>
     </div>
   </div>
 
-  <!-- Окно скопировать Промпт -->
-  <div class="modal" id="prompt-modal">
-    <div class="modal-content">
-      <h3>Скопировать системный промпт для ИИ</h3>
-      <p>Впишите ниже то, что должен делать скрипт, затем скопируйте полный промпт и отправьте его любому ИИ.</p>
-      
-      <div class="prop-group">
-        <label>Просьба пользователя (Что должен делать скрипт):</label>
-        <input type="text" id="user-req-input" value="При касании блока он меняет цвет на красный и через 2 секунды уничтожается." oninput="updatePromptText()">
-      </div>
-
+  <!-- Modal: Copy Prompt -->
+  <div class="modal-overlay" id="prompt-modal">
+    <div class="modal">
+      <h3>Промт для ИИ</h3>
+      <p style="font-size: 12px; color: #aaa;">Вставьте вашу задачу вместо {Просьба пользователя} и скопируйте текст в любую нейросеть (ChatGPT, Claude, DeepSeek):</p>
       <textarea id="prompt-text" readonly></textarea>
-
-      <div class="modal-footer">
-        <button class="btn" onclick="copyPrompt()">Скопировать промпт</button>
-        <button class="btn btn-secondary" onclick="closeModal('prompt-modal')">Закрыть</button>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn" onclick="closeModal('prompt-modal')">Закрыть</button>
+        <button class="btn btn-primary" onclick="copyPrompt()">Скопировать</button>
       </div>
     </div>
   </div>
 
-  <!-- Окно Load Code -->
-  <div class="modal" id="load-modal">
-    <div class="modal-content">
-      <h3>Загрузить код VisualSource от ИИ</h3>
-      <p>Вставьте сюда JSON код, который вам сгенерировал ИИ:</p>
-      <textarea id="json-input" placeholder='{"VisualSourceVersion": 4, "Blocks": [...]}'></textarea>
-
-      <div class="modal-footer">
-        <button class="btn" onclick="loadJSON()">Загрузить и Показать</button>
-        <button class="btn btn-secondary" onclick="closeModal('load-modal')">Отмена</button>
+  <!-- Modal: Load Code -->
+  <div class="modal-overlay" id="load-modal">
+    <div class="modal">
+      <h3>Загрузить JSON от ИИ</h3>
+      <p style="font-size: 12px; color: #aaa;">Вставьте код (VisualSource format / JSON), полученный от ИИ:</p>
+      <textarea id="load-json" placeholder='{"Blocks": [...]}'></textarea>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn" onclick="closeModal('load-modal')">Отмена</button>
+        <button class="btn btn-primary" onclick="loadScriptData()">Отобразить блоки</button>
       </div>
     </div>
   </div>
 
-  <script>
-    const sysPromptTemplate = (req) => `Ты ИИ для скриптинга в RetroStudio. Ты должен сделать скрипт для RetroStudio строго в официальном JSON формате VisualSource V4 (code-blocks), который точно передаёт структуру блоков, их связи и параметры.
+<script>
+  // Системный промт
+  const SYSTEM_PROMPT_TEMPLATE = `Ты ИИ для скриптинга в RetroStudio (Roblox). Твоя задача — сгенерировать точную структуру visual blocks скрипта в формате JSON (на основе VisualSource V3/V4).
 
-ОБЯЗАТЕЛЬНЫЕ ТРЕБОВАНИЯ К ОТВЕТУ:
-1. Выдавай ТОЛЬКО валидный JSON без внешнего текста, комментариев или markdown-обёрток (без \`\`\`json).
-2. Используй структуру VisualSource V4 с полями: Block, Type, Name, VisualPosition, ChildBlocks, Inputs, Outputs, NextBlockId.
+ВАЖНО: Верни ТОЛЬКО чистый JSON без markdown-оберток (без \`\`\`json).
 
-Формат JSON:
+Структура JSON должна соответствовать формату:
 {
-  "VisualSourceVersion": 4,
   "Blocks": [
     {
-      "Id": "block_1",
-      "Type": "Touched",
-      "Name": "On Part Touched",
-      "VisualPosition": { "X": 100, "Y": 100 },
-      "Inputs": { "Part": "Workspace.Part" },
-      "NextBlockId": "block_2"
+      "Id": "Block1",
+      "Type": "Control",
+      "Name": "For Loop",
+      "Color": "green",
+      "Subtext": "Start at 1 and increment by 1 until it equals 10",
+      "VisualPosition": [100, 50],
+      "Connections": [
+        {"TargetId": "Block2", "Type": "bottom", "Index": 0},
+        {"TargetId": "Block3", "Type": "bottom", "Index": 1}
+      ],
+      "Inputs": [],
+      "Outputs": []
     },
     {
-      "Id": "block_2",
-      "Type": "ChangeProperty",
-      "Name": "Set Color Red",
-      "VisualPosition": { "X": 100, "Y": 240 },
-      "Inputs": { "Object": "Workspace.Part", "Property": "BrickColor", "Value": "Bright red" },
-      "NextBlockId": "block_3"
-    },
-    {
-      "Id": "block_3",
-      "Type": "Wait",
-      "Name": "Wait 2 Seconds",
-      "VisualPosition": { "X": 100, "Y": 380 },
-      "Inputs": { "Duration": 2 },
-      "NextBlockId": "block_4"
-    },
-    {
-      "Id": "block_4",
-      "Type": "Destroy",
-      "Name": "Destroy Part",
-      "VisualPosition": { "X": 100, "Y": 520 },
-      "Inputs": { "Object": "Workspace.Part" },
-      "NextBlockId": null
+      "Id": "Block4",
+      "Type": "Property",
+      "Name": "Get Object Property",
+      "Color": "purple",
+      "Subtext": "Get ? of ?",
+      "VisualPosition": [350, 180],
+      "Connections": [],
+      "Inputs": [
+        {"Name": "Object", "Type": "Object", "Value": "Workspace.Part", "UseVariable": false},
+        {"Name": "Property", "Type": "String", "Value": "Anchored", "UseVariable": false}
+      ],
+      "Outputs": [
+        {"Name": "Value", "Value": "IsAnchoredVar"}
+      ]
     }
   ]
 }
 
+Цвета блоков (Color): "green" (логика/управление), "purple" (свойства/переменные), "blue" (действия).
+Типы соединений (Connections.Type): "bottom" (обычный переход вниз), "right" (для условий True/False).
+
 Нужно сделать:
-${req}`;
+{Просьба пользователя}`;
 
-    function updatePromptText() {
-      const req = document.getElementById('user-req-input').value;
-      document.getElementById('prompt-text').value = sysPromptTemplate(req);
-    }
-    updatePromptText();
+  document.getElementById('prompt-text').value = SYSTEM_PROMPT_TEMPLATE;
 
-    function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-
-    function copyPrompt() {
-      const text = document.getElementById('prompt-text');
-      text.select();
-      navigator.clipboard.writeText(text.value);
-      alert("Промпт скопирован! Вставьте его ИИ.");
-    }
-
-    function loadJSON() {
-      try {
-        const raw = document.getElementById('json-input').value.trim();
-        const data = JSON.parse(raw);
-        renderGraph(data);
-        closeModal('load-modal');
-      } catch (e) {
-        alert("Ошибка в формате JSON! Убедитесь, что ИИ дал точный код в формате JSON VisualSource V4.");
+  // Демо-данные
+  let currentScript = {
+    Blocks: [
+      {
+        Id: "B1", Name: "For Loop1", Color: "green",
+        Subtext: "Start at 1 and increment by 1 until it equals 10",
+        VisualPosition: [100, 40],
+        Connections: [
+          { TargetId: "B2", Type: "bottom", Index: 0 },
+          { TargetId: "B3", Type: "bottom", Index: 1 }
+        ],
+        Inputs: [], Outputs: []
+      },
+      {
+        Id: "B2", Name: "Continue Loop1", Color: "green", Subtext: "",
+        VisualPosition: [30, 160], Connections: [], Inputs: [], Outputs: []
+      },
+      {
+        Id: "B3", Name: "Break Loop1", Color: "green", Subtext: "",
+        VisualPosition: [210, 160], Connections: [], Inputs: [], Outputs: []
+      },
+      {
+        Id: "B4", Name: "If1", Color: "green", Subtext: "? == ?",
+        VisualPosition: [400, 40],
+        Connections: [{ TargetId: "B5", Type: "right" }],
+        Inputs: [], Outputs: []
+      },
+      {
+        Id: "B5", Name: "Get Object Property1", Color: "purple", Subtext: "Get ? of ?",
+        VisualPosition: [540, 160], Connections: [],
+        Inputs: [
+          { Name: "Object", Type: "Object", Value: "", UseVariable: false },
+          { Name: "Property", Type: "String", Value: "", UseVariable: false }
+        ],
+        Outputs: [{ Name: "Value", Value: "" }]
       }
-    }
+    ]
+  };
 
-    function renderGraph(data) {
-      const layer = document.getElementById('blocks-layer');
-      const svg = document.getElementById('connections');
-      layer.innerHTML = '';
-      svg.innerHTML = '';
+  let selectedBlockId = null;
 
-      if (!data.Blocks || !Array.isArray(data.Blocks)) return;
+  function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  function copyPrompt() {
+    navigator.clipboard.writeText(document.getElementById('prompt-text').value);
+    alert('Промт скопирован в буфер обмена!');
+    closeModal('prompt-modal');
+  }
 
-      const blockMap = {};
+  function renderScript() {
+    const layer = document.getElementById('blocks-layer');
+    const svg = document.getElementById('svg-connections');
+    layer.innerHTML = '';
+    svg.innerHTML = '';
 
-      data.Blocks.forEach(b => {
-        blockMap[b.Id] = b;
-        const el = document.createElement('div');
-        el.className = 'block';
-        
-        const posX = b.VisualPosition?.X || 100;
-        const posY = b.VisualPosition?.Y || 100;
-        
-        el.style.left = posX + 'px';
-        el.style.top = posY + 'px';
-        
-        let inputsPreview = '';
-        if (b.Inputs) {
-          inputsPreview = Object.entries(b.Inputs).map(([k, v]) => `${k}: ${v}`).join('<br>');
+    currentScript.Blocks.forEach(block => {
+      // Отрисовка блока
+      const el = document.createElement('div');
+      el.className = `block color-${block.Color || 'green'} ${selectedBlockId === block.Id ? 'selected' : ''}`;
+      el.style.left = block.VisualPosition[0] + 'px';
+      el.style.top = block.VisualPosition[1] + 'px';
+      el.onclick = (e) => { e.stopPropagation(); selectBlock(block.Id); };
+
+      el.innerHTML = `
+        <div class="block-title">${block.Name}</div>
+        ${block.Subtext ? `<div class="block-sub">${block.Subtext}</div>` : ''}
+      `;
+
+      // Добавление визуальных узлов подключения
+      if (block.Connections && block.Connections.length > 0) {
+        const hasRight = block.Connections.some(c => c.Type === 'right');
+        if (hasRight) {
+          const nodeRight = document.createElement('div');
+          nodeRight.className = 'node-right';
+          nodeRight.innerHTML = `<div class="node node-red"></div>`;
+          el.appendChild(nodeRight);
+        } else {
+          const nodesCont = document.createElement('div');
+          nodesCont.className = 'nodes-container';
+          block.Connections.forEach(() => {
+            nodesCont.innerHTML += `<div class="node node-orange"></div>`;
+          });
+          el.appendChild(nodesCont);
         }
+      }
 
-        el.innerHTML = `
-          <div class="block-header">${b.Name || b.Type}</div>
-          <div class="block-type">${b.Type}</div>
-          ${inputsPreview ? `<div class="block-preview">${inputsPreview}</div>` : ''}
-        `;
+      layer.appendChild(el);
 
-        el.onclick = (e) => {
-          e.stopPropagation();
-          selectBlock(b, el);
-        };
+      // Отрисовка линий связей (SVG connections)
+      if (block.Connections) {
+        block.Connections.forEach((conn, idx) => {
+          const target = currentScript.Blocks.find(b => b.Id === conn.TargetId);
+          if (target) {
+            let startX = block.VisualPosition[0] + 80;
+            let startY = block.VisualPosition[1] + 70;
 
-        layer.appendChild(el);
-        b._element = el;
-      });
+            if (conn.Type === 'right') {
+              startX = block.VisualPosition[0] + 160;
+              startY = block.VisualPosition[1] + 35;
+            } else if (block.Connections.length > 1) {
+              const step = 160 / (block.Connections.length + 1);
+              startX = block.VisualPosition[0] + step * (idx + 1);
+            }
 
-      // Отрисовка линий связей (как в RetroStudio)
-      data.Blocks.forEach(b => {
-        if (b.NextBlockId && blockMap[b.NextBlockId]) {
-          drawConnection(b, blockMap[b.NextBlockId], svg);
-        }
-      });
-    }
+            const endX = target.VisualPosition[0] + 80;
+            const endY = target.VisualPosition[1];
 
-    function drawConnection(b1, b2, svg) {
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      
-      const x1 = (b1.VisualPosition?.X || 100) + 90;
-      const y1 = (b1.VisualPosition?.Y || 100) + 70;
-      const x2 = (b2.VisualPosition?.X || 100) + 90;
-      const y2 = (b2.VisualPosition?.Y || 100);
-
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      line.setAttribute('stroke', '#ffaa00');
-      line.setAttribute('stroke-width', '3');
-      svg.appendChild(line);
-    }
-
-    function selectBlock(b, el) {
-      document.querySelectorAll('.block').forEach(x => x.classList.remove('selected'));
-      el.classList.add('selected');
-
-      const insp = document.getElementById('inspector');
-      insp.classList.add('active');
-      
-      document.getElementById('insp-name').innerText = b.Name || b.Type;
-      document.getElementById('insp-type').value = b.Type;
-      document.getElementById('insp-id').value = b.Id;
-
-      const container = document.getElementById('dynamic-inputs');
-      container.innerHTML = '<div style="margin: 15px 0 8px; font-size:12px; color:#ffaa00; font-weight:bold;">Параметры блока (Inputs):</div>';
-
-      if (b.Inputs && Object.keys(b.Inputs).length > 0) {
-        Object.keys(b.Inputs).forEach(k => {
-          container.innerHTML += `
-            <div class="prop-group">
-              <label>${k}</label>
-              <input type="text" value="${b.Inputs[k]}" readonly>
-            </div>`;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M ${startX} ${startY} C ${startX} ${startY + 30}, ${endX} ${endY - 30}, ${endX} ${endY}`;
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', conn.Type === 'right' ? '#ef4444' : '#f97316');
+            path.setAttribute('stroke-width', '4');
+            path.setAttribute('fill', 'none');
+            svg.appendChild(path);
+          }
         });
-      } else {
-        container.innerHTML += '<div style="font-size:11px; color:#666;">Нет дополнительных параметров</div>';
       }
+    });
+  }
+
+  function selectBlock(id) {
+    selectedBlockId = id;
+    renderScript();
+
+    const block = currentScript.Blocks.find(b => b.Id === id);
+    const header = document.getElementById('inspect-header');
+    const inputsCont = document.getElementById('inputs-container');
+    const outputsCont = document.getElementById('outputs-container');
+
+    header.innerText = block.Name;
+    inputsCont.innerHTML = '';
+    outputsCont.innerHTML = '';
+
+    if (block.Inputs && block.Inputs.length > 0) {
+      block.Inputs.forEach(inp => {
+        inputsCont.innerHTML += `
+          <div class="field-group">
+            <label class="field-label">${inp.Name} (${inp.Type})</label>
+            <input type="text" class="field-input" value="${inp.Value || ''}" placeholder="${inp.Type === 'Object' ? 'Object Path or Variable' : inp.Type}">
+            <label class="field-checkbox" style="margin-top: 6px;">
+              <input type="checkbox" ${inp.UseVariable ? 'checked' : ''}> Use Variable?
+            </label>
+          </div>
+        `;
+      });
+    } else {
+      inputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Inputs</div>';
     }
 
-    document.getElementById('canvas-container').onclick = () => {
-      document.getElementById('inspector').classList.remove('active');
-      document.querySelectorAll('.block').forEach(x => x.classList.remove('selected'));
-    };
-  </script>
+    if (block.Outputs && block.Outputs.length > 0) {
+      block.Outputs.forEach(out => {
+        outputsCont.innerHTML += `
+          <div class="field-group">
+            <label class="field-label">${out.Name}</label>
+            <input type="text" class="field-input" value="${out.Value || ''}" placeholder="Variable Name">
+          </div>
+        `;
+      });
+    } else {
+      outputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Outputs</div>';
+    }
+  }
+
+  function loadScriptData() {
+    const raw = document.getElementById('load-json').value;
+    try {
+      const data = JSON.parse(raw);
+      if (data.Blocks) {
+        currentScript = data;
+        selectedBlockId = null;
+        renderScript();
+        closeModal('load-modal');
+      } else {
+        alert('Ошибка: в JSON должен быть массив "Blocks"');
+      }
+    } catch (e) {
+      alert('Некорректный формат JSON!');
+    }
+  }
+
+  // Начальный рендер
+  renderScript();
+</script>
 </body>
 </html>
