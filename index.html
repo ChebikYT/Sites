@@ -2,72 +2,46 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>RetroStudio AI Visualizer V2 (VisualSource V4)</title>
+<title>RetroStudio VisualSource V4 Engine</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; user-select: none; }
   body { background-color: #141414; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  /* TopBar */
   .topbar {
     height: 45px; background-color: #222; border-bottom: 2px solid #333;
     display: flex; align-items: center; padding: 0 15px; gap: 10px; z-index: 100;
   }
-  .btn {
-    background: #333; color: white; border: 1px solid #555; padding: 6px 14px;
-    border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
-  }
+  .btn { background: #333; color: white; border: 1px solid #555; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
   .btn:hover { background: #444; }
   .btn-primary { background: #007acc; border-color: #005999; }
   .btn-primary:hover { background: #0098ff; }
 
-  /* Workspace & Pan/Zoom Canvas */
   .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
-  
-  .canvas-viewport {
-    flex: 1; position: relative; background-color: #1a1a1a;
-    background-image: radial-gradient(#333 1px, transparent 1px);
-    background-size: 20px 20px; overflow: hidden; cursor: grab;
-  }
+  .canvas-viewport { flex: 1; position: relative; background-color: #1a1a1a; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; cursor: grab; }
   .canvas-viewport:active { cursor: grabbing; }
+  .canvas-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; width: 5000px; height: 5000px; pointer-events: none; }
+  #svg-connections { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 
-  .canvas-world {
-    position: absolute; top: 0; left: 0; transform-origin: 0 0;
-    width: 5000px; height: 5000px; pointer-events: none;
-  }
-
-  #svg-connections {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 1;
-  }
-
-  /* Authentic RetroStudio Block Styles */
+  /* Authentic RetroStudio UI Block */
   .block {
-    position: absolute; width: 180px; min-height: 75px; border-radius: 8px;
-    padding: 8px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-    text-align: center; font-size: 11px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
-    border: 2px solid rgba(255,255,255,0.2); z-index: 2; pointer-events: auto;
+    position: absolute; width: 190px; min-height: 75px; border-radius: 8px; padding: 8px 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start; text-align: center; font-size: 11px; font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.9); border: 2px solid rgba(255,255,255,0.2); z-index: 2; pointer-events: auto;
   }
   .block.selected { border-color: #00bfff; box-shadow: 0 0 12px #00bfff; }
-  
   .block-title { font-size: 12px; margin-bottom: 4px; color: #fff; word-break: break-word; }
   .block-sub { font-size: 10px; opacity: 0.9; font-weight: normal; color: #ddd; line-height: 1.2; }
 
-  /* Official Block Category Colors */
-  .cat-event { background: linear-gradient(180deg, #1e6091 0%, #0f3857 100%); }      /* Event - Blue */
-  .cat-control { background: linear-gradient(180deg, #10b981 0%, #047857 100%); }    /* Logic/Control - Green */
-  .cat-variable { background: linear-gradient(180deg, #d97706 0%, #b45309 100%); }   /* Variables/Math - Yellow/Orange */
-  .cat-property { background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%); }   /* Properties - Purple */
+  /* Exact RetroStudio Category Colors */
+  .cat-event { background: linear-gradient(180deg, #1e6091 0%, #0f3857 100%); }
+  .cat-control { background: linear-gradient(180deg, #10b981 0%, #047857 100%); }
+  .cat-variable { background: linear-gradient(180deg, #d97706 0%, #b45309 100%); }
+  .cat-property { background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%); }
+  .cat-action { background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%); }
 
-  /* Connectors */
-  .nodes-bottom {
-    position: absolute; bottom: -8px; left: 0; right: 0;
-    display: flex; justify-content: space-evenly; pointer-events: none;
-  }
-  .node-right { position: absolute; right: -8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-  .node { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #111; }
-  .node-orange { background-color: #f97316; }
-  .node-red { background-color: #ef4444; }
+  .nodes-bottom { position: absolute; bottom: -8px; left: 0; right: 0; display: flex; justify-content: space-evenly; pointer-events: none; }
+  .node { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #111; background-color: #f97316; }
 
   /* Inspector Sidebar */
   .sidebar { width: 320px; background-color: #111; border-left: 2px solid #333; display: flex; flex-direction: column; z-index: 10; }
@@ -78,7 +52,6 @@
   .field-label { font-size: 11px; color: #aaa; margin-bottom: 4px; display: block; }
   .field-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 12px; }
 
-  /* Modals */
   .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
   .modal { background: #222; border: 1px solid #444; border-radius: 8px; width: 600px; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
   .modal textarea { width: 100%; height: 220px; background: #111; border: 1px solid #333; color: #00ff66; font-family: monospace; padding: 10px; border-radius: 4px; resize: vertical; font-size: 11px; }
@@ -89,7 +62,7 @@
   <div class="topbar">
     <button class="btn btn-primary" onclick="openModal('prompt-modal')">Prompt</button>
     <button class="btn" onclick="openModal('load-modal')">Load</button>
-    <span style="font-size: 11px; color: #888; margin-left: auto;">RetroStudio VisualSource V4 AI Engine</span>
+    <span style="font-size: 11px; color: #888; margin-left: auto;">RetroStudio VisualSource V4 Strict Visualizer</span>
   </div>
 
   <div class="workspace">
@@ -100,7 +73,6 @@
       </div>
     </div>
 
-    <!-- Inspector -->
     <div class="sidebar" id="inspector">
       <div class="sidebar-header" id="inspect-header">Выберите блок</div>
       <div style="overflow-y: auto; flex: 1;">
@@ -116,11 +88,9 @@
     </div>
   </div>
 
-  <!-- Modal: Prompt -->
   <div class="modal-overlay" id="prompt-modal">
     <div class="modal">
-      <h3>Системный Промт для ИИ</h3>
-      <p style="font-size: 11px; color: #aaa;">Скопируйте этот текст в нейросеть (ChatGPT/DeepSeek), заменив заполнитель вашей задачей:</p>
+      <h3>Промт для ИИ</h3>
       <textarea id="prompt-text" readonly></textarea>
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn" onclick="closeModal('prompt-modal')">Закрыть</button>
@@ -129,11 +99,10 @@
     </div>
   </div>
 
-  <!-- Modal: Load -->
   <div class="modal-overlay" id="load-modal">
     <div class="modal">
-      <h3>Загрузить компактный скрипт от ИИ</h3>
-      <textarea id="load-json" placeholder='[{"id":"1", "block":"Click Detector Interaction", ...}]'></textarea>
+      <h3>Загрузить 1-строчный JSON</h3>
+      <textarea id="load-json" placeholder='[["ClickDetectorInteraction","2",{"ClickDetector":"script.Parent.ClickDetector"}]]'></textarea>
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn" onclick="closeModal('load-modal')">Отмена</button>
         <button class="btn btn-primary" onclick="loadScriptData()">Отобразить</button>
@@ -142,243 +111,223 @@
   </div>
 
 <script>
-  // Системный Промт с учётом документации VisualSource V4
-  const SYSTEM_PROMPT_TEMPLATE = `Ты ИИ-скриптер для RetroStudio (Roblox). Генерируй скрипты строго по документации VisualSource V4 / code-blocks.
+  // Реестр блоков VisualSource V4 (Определяет имена, категории, отображение и параметры)
+  const VISUAL_SOURCE_V4_REGISTRY = {
+    "ClickDetectorInteraction": {
+      name: "Click Detector Interaction", cat: "event",
+      sub: (i) => `Execute when ${i.ClickDetector || 'ClickDetector'} is Clicked`,
+      inputs: [{ name: "ClickDetector", type: "Object", default: "script.Parent.ClickDetector" }],
+      outputs: [{ name: "PlayerWhoClicked", type: "Object", default: "" }]
+    },
+    "TouchedInteraction": {
+      name: "Touched Interaction", cat: "event",
+      sub: (i) => `Execute when ${i.Part || 'Part'} is Touched`,
+      inputs: [{ name: "Part", type: "Object", default: "script.Parent" }],
+      outputs: [{ name: "OtherPart", type: "Object", default: "" }]
+    },
+    "RandomBrickColor": {
+      name: "Random BrickColor", cat: "variable",
+      sub: (i, o) => `${o.Value || 'Color'}`,
+      inputs: [],
+      outputs: [{ name: "Value", type: "BrickColor", default: "Color" }]
+    },
+    "RandomNumber": {
+      name: "Random Number", cat: "variable",
+      sub: (i) => `Random number between ${i.Min || '?'} and ${i.Max || '?'}`,
+      inputs: [{ name: "Min", type: "Number", default: "1" }, { name: "Max", type: "Number", default: "10" }],
+      outputs: [{ name: "Value", type: "Number", default: "Num" }]
+    },
+    "SetObjectProperty": {
+      name: "Set Object Property", cat: "property",
+      sub: (i) => `Set "${i.Property || 'Property'}" of ${i.Object || 'Object'} to ${i.Value || 'Value'}`,
+      inputs: [
+        { name: "Object", type: "Object", default: "script.Parent" },
+        { name: "Property", type: "String", default: "BrickColor" },
+        { name: "Value", type: "Variant", default: "Color" }
+      ],
+      outputs: []
+    },
+    "GetObjectProperty": {
+      name: "Get Object Property", cat: "property",
+      sub: (i) => `Get "${i.Property || 'Property'}" of ${i.Object || 'Object'}`,
+      inputs: [
+        { name: "Object", type: "Object", default: "script.Parent" },
+        { name: "Property", type: "String", default: "Anchored" }
+      ],
+      outputs: [{ name: "Value", type: "Variant", default: "Val" }]
+    },
+    "RepeatNTimes": {
+      name: "Repeat N Times", cat: "control",
+      sub: (i) => `Repeat ${i.Times || '10'} Times`,
+      inputs: [{ name: "Times", type: "Number", default: "10" }],
+      outputs: []
+    },
+    "WaitNSeconds": {
+      name: "Wait N Seconds", cat: "control",
+      sub: (i) => `Wait ${i.Seconds || '1'} Seconds`,
+      inputs: [{ name: "Seconds", type: "Number", default: "1" }],
+      outputs: []
+    }
+  };
 
-СТРОГИЕ ПРАВИЛА RETROSTUDIO:
-1. Используй ТОЛЬКО официальные имена блоков:
-   - События: "Click Detector Interaction", "Touched Interaction" и т.д.
-   - Рандом/Переменные: "Random BrickColor", "Random Number" и т.д.
-   - Свойства: "Set Object Property", "Get Object Property" и т.д.
-2. ТИПЫ ДАННЫХ: Не путай BrickColor и Number/Color3! Для цвета блока используй "Random BrickColor", а не "Random Number".
-3. Формат ответа — СЖАТЫЙ JSON МАССИВ (без лишних разговоров и без markdown):
+  const SYSTEM_PROMPT = `Ты ИИ-скриптер для RetroStudio (VisualSource V4).
+Генерируй ТОЛЬКО массив строк JSON. Никаких слов, названий категорий, "Inputs/Outputs" и "Block" объектов.
+Формат строки блока: ["TYPE_ID", "NEXT_INDEX_OR_NULL", {измененные_inputs}, {измененные_outputs}]
 
+Используй строго TYPE_ID из списка:
+- Events: "ClickDetectorInteraction", "TouchedInteraction"
+- Variables/Math: "RandomBrickColor", "RandomNumber"
+- Properties: "SetObjectProperty", "GetObjectProperty"
+- Control: "RepeatNTimes", "WaitNSeconds"
+
+Пример для "Смена цвета блока при клике":
 [
-  {
-    "id": "1",
-    "block": "Click Detector Interaction",
-    "cat": "event",
-    "sub": "Execute when script.Parent.ClickDetector is Clicked",
-    "next": "2",
-    "inputs": [],
-    "outputs": []
-  },
-  {
-    "id": "2",
-    "block": "Random BrickColor",
-    "cat": "variable",
-    "sub": "Color",
-    "next": "3",
-    "inputs": [],
-    "outputs": [{"name": "Value", "val": "Color"}]
-  },
-  {
-    "id": "3",
-    "block": "Set Object Property",
-    "cat": "property",
-    "sub": "Set \"BrickColor\" of script.Parent to Color",
-    "inputs": [
-      {"name": "Object", "type": "Object", "val": "script.Parent"},
-      {"name": "Property", "type": "String", "val": "BrickColor"},
-      {"name": "Value", "type": "Variant", "val": "Color"}
-    ],
-    "outputs": []
-  }
+  ["ClickDetectorInteraction", "2", {"ClickDetector":"script.Parent.ClickDetector"}],
+  ["RandomBrickColor", "3", {}, {"Value":"Color"}],
+  ["SetObjectProperty", null, {"Object":"script.Parent","Property":"BrickColor","Value":"Color"}]
 ]
-
-Категории (cat): "event" (синий), "control" (зеленый), "variable" (желтый), "property" (фиолетовый).
 
 Нужно сделать:
 {Просьба пользователя}`;
 
-  document.getElementById('prompt-text').value = SYSTEM_PROMPT_TEMPLATE;
+  document.getElementById('prompt-text').value = SYSTEM_PROMPT;
 
-  // Демонстрационный скрипт (соответствует твоему второму скриншоту)
-  let currentScript = [
-    {
-      id: "1", block: "Click Detector Interaction1", cat: "event",
-      sub: "Execute when script.Parent.ClickDetector is Clicked", next: "2",
-      inputs: [], outputs: []
-    },
-    {
-      id: "2", block: "Random BrickColor1", cat: "variable",
-      sub: "Color", next: "3",
-      inputs: [], outputs: [{ name: "Value", val: "Color" }]
-    },
-    {
-      id: "3", block: "Set Object Property1", cat: "property",
-      sub: 'Set "BrickColor" of script.Parent to Color',
-      inputs: [
-        { name: "Object", type: "Object", val: "script.Parent", useVar: false },
-        { name: "Property", type: "String", val: "BrickColor", useVar: false },
-        { name: "Value", type: "Variant", val: "Color", useVar: true }
-      ],
-      outputs: []
-    }
+  // Базовый 1-строчный формат данных
+  let rawScriptData = [
+    ["ClickDetectorInteraction", "2", { ClickDetector: "script.Parent.ClickDetector" }],
+    ["RandomBrickColor", "3", {}, { Value: "Color" }],
+    ["SetObjectProperty", null, { Object: "script.Parent", Property: "BrickColor", Value: "Color" }]
   ];
 
-  let selectedBlockId = null;
-
-  // Pan & Zoom Engine
+  let selectedIndex = null;
   let scale = 1, panX = 100, panY = 50, isDragging = false, startX = 0, startY = 0;
   const viewport = document.getElementById('viewport');
   const world = document.getElementById('world');
 
-  function updateTransform() {
-    world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-  }
+  function updateTransform() { world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
 
   viewport.addEventListener('mousedown', (e) => {
     if (e.button === 1 || e.button === 2 || e.shiftKey || e.target === viewport) {
-      isDragging = true;
-      startX = e.clientX - panX;
-      startY = e.clientY - panY;
+      isDragging = true; startX = e.clientX - panX; startY = e.clientY - panY;
     }
   });
-
   window.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-      panX = e.clientX - startX;
-      panY = e.clientY - startY;
-      updateTransform();
-    }
+    if (isDragging) { panX = e.clientX - startX; panY = e.clientY - startY; updateTransform(); }
   });
-
   window.addEventListener('mouseup', () => isDragging = false);
   viewport.addEventListener('contextmenu', e => e.preventDefault());
-
   viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    scale = Math.min(Math.max(0.3, scale * zoomFactor), 2.5);
+    scale = Math.min(Math.max(0.3, scale * (e.deltaY < 0 ? 1.1 : 0.9)), 2.5);
     updateTransform();
   });
 
-  // Автоматический расчет расположения блоков по топологии
-  function calculatePositions(blocks) {
-    let startY = 40;
-    blocks.forEach((b, index) => {
-      b.x = 200;
-      b.y = startY;
-      startY += 120;
-    });
-  }
-
   function renderScript() {
-    calculatePositions(currentScript);
     const layer = document.getElementById('blocks-layer');
     const svg = document.getElementById('svg-connections');
-    layer.innerHTML = '';
-    svg.innerHTML = '';
+    layer.innerHTML = ''; svg.innerHTML = '';
 
-    currentScript.forEach(block => {
+    let curY = 40;
+    rawScriptData.forEach((item, index) => {
+      const typeId = item[0];
+      const nextIdx = item[1];
+      const customInp = item[2] || {};
+      const customOut = item[3] || {};
+
+      const meta = VISUAL_SOURCE_V4_REGISTRY[typeId] || { name: typeId, cat: "control", sub: () => "", inputs: [], outputs: [] };
+
+      // Объединяем дефолтные параметры и кастомные из JSON
+      const mergedInp = {}; meta.inputs.forEach(i => mergedInp[i.name] = customInp[i.name] !== undefined ? customInp[i.name] : i.default);
+      const mergedOut = {}; meta.outputs.forEach(o => mergedOut[o.name] = customOut[o.name] !== undefined ? customOut[o.name] : o.default);
+
+      const blockX = 200;
+      const blockY = curY;
+      curY += 120;
+
       const el = document.createElement('div');
-      el.className = `block cat-${block.cat || 'control'} ${selectedBlockId === block.id ? 'selected' : ''}`;
-      el.style.left = block.x + 'px';
-      el.style.top = block.y + 'px';
-      el.onclick = (e) => { e.stopPropagation(); selectBlock(block.id); };
+      el.className = `block cat-${meta.cat} ${selectedIndex === index ? 'selected' : ''}`;
+      el.style.left = blockX + 'px'; el.style.top = blockY + 'px';
+      el.onclick = (e) => { e.stopPropagation(); selectBlock(index); };
 
       el.innerHTML = `
-        <div class="block-title">${block.block}</div>
-        ${block.sub ? `<div class="block-sub">${block.sub}</div>` : ''}
+        <div class="block-title">${meta.name}</div>
+        <div class="block-sub">${meta.sub(mergedInp, mergedOut)}</div>
       `;
 
-      if (block.next || block.altNext) {
+      if (nextIdx !== null) {
         const nodesCont = document.createElement('div');
         nodesCont.className = 'nodes-bottom';
-        nodesCont.innerHTML = `<div class="node node-orange"></div>`;
-        if (block.altNext) nodesCont.innerHTML += `<div class="node node-orange"></div>`;
+        nodesCont.innerHTML = `<div class="node"></div>`;
         el.appendChild(nodesCont);
       }
 
       layer.appendChild(el);
 
-      // Отрисовка линий соединений
-      if (block.next) {
-        const target = currentScript.find(b => b.id === block.next);
-        if (target) {
-          const startX = block.x + 90;
-          const startY = block.y + 75;
-          const endX = target.x + 90;
-          const endY = target.y;
-
-          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          const d = `M ${startX} ${startY} C ${startX} ${startY + 20}, ${endX} ${endY - 20}, ${endX} ${endY}`;
-          path.setAttribute('d', d);
-          path.setAttribute('stroke', '#f97316');
-          path.setAttribute('stroke-width', '4');
-          path.setAttribute('fill', 'none');
-          svg.appendChild(path);
-        }
+      // SVG соединения
+      if (nextIdx !== null) {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${blockX + 95} ${blockY + 75} C ${blockX + 95} ${blockY + 100}, ${blockX + 95} ${blockY + 100}, ${blockX + 95} ${blockY + 120}`);
+        path.setAttribute('stroke', '#f97316'); path.setAttribute('stroke-width', '4'); path.setAttribute('fill', 'none');
+        svg.appendChild(path);
       }
     });
     updateTransform();
   }
 
-  function selectBlock(id) {
-    selectedBlockId = id;
+  function selectBlock(index) {
+    selectedIndex = index;
     renderScript();
 
-    const block = currentScript.find(b => b.id === id);
-    const header = document.getElementById('inspect-header');
+    const item = rawScriptData[index];
+    const typeId = item[0];
+    const customInp = item[2] || {};
+    const customOut = item[3] || {};
+
+    const meta = VISUAL_SOURCE_V4_REGISTRY[typeId] || { name: typeId, inputs: [], outputs: [] };
+
+    document.getElementById('inspect-header').innerText = meta.name;
     const inputsCont = document.getElementById('inputs-container');
     const outputsCont = document.getElementById('outputs-container');
+    inputsCont.innerHTML = ''; outputsCont.innerHTML = '';
 
-    header.innerText = block.block;
-    inputsCont.innerHTML = '';
-    outputsCont.innerHTML = '';
-
-    if (block.inputs && block.inputs.length > 0) {
-      block.inputs.forEach(inp => {
+    // Выводим все параметры в Инспектор
+    if (meta.inputs.length > 0) {
+      meta.inputs.forEach(inp => {
+        const val = customInp[inp.name] !== undefined ? customInp[inp.name] : inp.default;
         inputsCont.innerHTML += `
           <div class="field-group">
             <label class="field-label">${inp.name} (${inp.type})</label>
-            <input type="text" class="field-input" value="${inp.val || ''}">
+            <input type="text" class="field-input" value="${val}">
           </div>
         `;
       });
-    } else {
-      inputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Inputs</div>';
-    }
+    } else { inputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Inputs</div>'; }
 
-    if (block.outputs && block.outputs.length > 0) {
-      block.outputs.forEach(out => {
+    if (meta.outputs.length > 0) {
+      meta.outputs.forEach(out => {
+        const val = customOut[out.name] !== undefined ? customOut[out.name] : out.default;
         outputsCont.innerHTML += `
           <div class="field-group">
             <label class="field-label">${out.name}</label>
-            <input type="text" class="field-input" value="${out.val || ''}">
+            <input type="text" class="field-input" value="${val}">
           </div>
         `;
       });
-    } else {
-      outputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Outputs</div>';
-    }
+    } else { outputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Outputs</div>'; }
   }
 
   function loadScriptData() {
-    const raw = document.getElementById('load-json').value;
     try {
-      const data = JSON.parse(raw);
+      const data = JSON.parse(document.getElementById('load-json').value);
       if (Array.isArray(data)) {
-        currentScript = data;
-        selectedBlockId = null;
-        renderScript();
-        closeModal('load-modal');
-      } else {
-        alert('Ошибка: Ожидается JSON массив блоков');
+        rawScriptData = data; selectedIndex = null; renderScript(); closeModal('load-modal');
       }
-    } catch (e) {
-      alert('Ошибка парсинга JSON');
-    }
+    } catch (e) { alert('Ошибка в формате JSON!'); }
   }
 
   function openModal(id) { document.getElementById(id).style.display = 'flex'; }
   function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-  function copyPrompt() {
-    navigator.clipboard.writeText(document.getElementById('prompt-text').value);
-    alert('Промт скопирован!');
-    closeModal('prompt-modal');
-  }
+  function copyPrompt() { navigator.clipboard.writeText(document.getElementById('prompt-text').value); alert('Промт скопирован!'); closeModal('prompt-modal'); }
 
   renderScript();
 </script>
