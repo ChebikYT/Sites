@@ -2,124 +2,107 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>RetroStudio AI Visualizer</title>
+<title>RetroStudio AI Visualizer V2 (VisualSource V4)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; user-select: none; }
-  body { background-color: #1a1a1a; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body { background-color: #141414; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
   /* TopBar */
   .topbar {
-    height: 45px; background-color: #2b2b2b; border-bottom: 2px solid #3a3a3a;
+    height: 45px; background-color: #222; border-bottom: 2px solid #333;
     display: flex; align-items: center; padding: 0 15px; gap: 10px; z-index: 100;
   }
   .btn {
-    background: #3c3c3c; color: white; border: 1px solid #555; padding: 6px 14px;
+    background: #333; color: white; border: 1px solid #555; padding: 6px 14px;
     border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
   }
-  .btn:hover { background: #4a4a4a; }
+  .btn:hover { background: #444; }
   .btn-primary { background: #007acc; border-color: #005999; }
   .btn-primary:hover { background: #0098ff; }
 
-  /* Main Workbench Area */
+  /* Workspace & Pan/Zoom Canvas */
   .workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
   
-  /* Grid Canvas Area */
-  .canvas-container {
-    flex: 1; position: relative; background-color: #222;
+  .canvas-viewport {
+    flex: 1; position: relative; background-color: #1a1a1a;
     background-image: radial-gradient(#333 1px, transparent 1px);
-    background-size: 20px 20px; overflow: auto;
+    background-size: 20px 20px; overflow: hidden; cursor: grab;
   }
+  .canvas-viewport:active { cursor: grabbing; }
+
+  .canvas-world {
+    position: absolute; top: 0; left: 0; transform-origin: 0 0;
+    width: 5000px; height: 5000px; pointer-events: none;
+  }
+
   #svg-connections {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none; z-index: 1;
   }
 
-  /* RetroStudio Block Styles */
+  /* Authentic RetroStudio Block Styles */
   .block {
-    position: absolute; width: 160px; height: 70px; border-radius: 10px;
-    padding: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-    border: 2px solid rgba(255,255,255,0.2); z-index: 2; transition: transform 0.1s, box-shadow 0.1s;
+    position: absolute; width: 180px; min-height: 75px; border-radius: 8px;
+    padding: 8px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    text-align: center; font-size: 11px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+    border: 2px solid rgba(255,255,255,0.2); z-index: 2; pointer-events: auto;
   }
-  .block:hover { transform: scale(1.03); box-shadow: 0 0 10px rgba(255,255,255,0.4); }
-  .block.selected { border-color: #fff; box-shadow: 0 0 12px #00aaff; }
-  .block-title { font-size: 13px; margin-bottom: 4px; pointer-events: none; }
-  .block-sub { font-size: 10px; opacity: 0.85; font-weight: normal; pointer-events: none; }
+  .block.selected { border-color: #00bfff; box-shadow: 0 0 12px #00bfff; }
+  
+  .block-title { font-size: 12px; margin-bottom: 4px; color: #fff; word-break: break-word; }
+  .block-sub { font-size: 10px; opacity: 0.9; font-weight: normal; color: #ddd; line-height: 1.2; }
 
-  /* Block Colors (RetroStudio standard) */
-  .color-green { background: linear-gradient(180deg, #10b981 0%, #047857 100%); }
-  .color-purple { background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%); }
-  .color-blue { background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%); }
+  /* Official Block Category Colors */
+  .cat-event { background: linear-gradient(180deg, #1e6091 0%, #0f3857 100%); }      /* Event - Blue */
+  .cat-control { background: linear-gradient(180deg, #10b981 0%, #047857 100%); }    /* Logic/Control - Green */
+  .cat-variable { background: linear-gradient(180deg, #d97706 0%, #b45309 100%); }   /* Variables/Math - Yellow/Orange */
+  .cat-property { background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%); }   /* Properties - Purple */
 
-  /* Node Output Connectors */
-  .nodes-container {
+  /* Connectors */
+  .nodes-bottom {
     position: absolute; bottom: -8px; left: 0; right: 0;
     display: flex; justify-content: space-evenly; pointer-events: none;
   }
-  .node-right {
-    position: absolute; right: -8px; top: 50%; transform: translateY(-50%); pointer-events: none;
-  }
-  .node {
-    width: 14px; height: 14px; border-radius: 50%; border: 2px solid #1a1a1a;
-  }
+  .node-right { position: absolute; right: -8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .node { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #111; }
   .node-orange { background-color: #f97316; }
   .node-red { background-color: #ef4444; }
 
-  /* Right Sidebar (Properties Inspector) */
-  .sidebar {
-    width: 320px; background-color: #111; border-left: 2px solid #333;
-    display: flex; flex-direction: column; z-index: 10;
-  }
-  .sidebar-header {
-    background: #000; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; border-bottom: 1px solid #333;
-  }
+  /* Inspector Sidebar */
+  .sidebar { width: 320px; background-color: #111; border-left: 2px solid #333; display: flex; flex-direction: column; z-index: 10; }
+  .sidebar-header { background: #000; padding: 12px; text-align: center; font-size: 13px; font-weight: bold; border-bottom: 1px solid #333; }
   .sidebar-section { padding: 12px; border-bottom: 1px solid #222; }
-  .sidebar-section-title {
-    font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #fff;
-  }
+  .sidebar-section-title { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #fff; }
   .field-group { margin-bottom: 12px; }
   .field-label { font-size: 11px; color: #aaa; margin-bottom: 4px; display: block; }
-  .field-input {
-    width: 100%; background: #222; border: 1px solid #444; color: #fff;
-    padding: 6px 8px; border-radius: 4px; font-size: 12px;
-  }
-  .field-checkbox { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+  .field-input { width: 100%; background: #222; border: 1px solid #444; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 12px; }
 
   /* Modals */
-  .modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 200;
-  }
-  .modal {
-    background: #222; border: 1px solid #444; border-radius: 8px; width: 550px;
-    padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-  }
-  .modal textarea {
-    width: 100%; height: 180px; background: #111; border: 1px solid #333; color: #00ff66;
-    font-family: monospace; padding: 10px; border-radius: 4px; resize: vertical; font-size: 12px;
-  }
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
+  .modal { background: #222; border: 1px solid #444; border-radius: 8px; width: 600px; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+  .modal textarea { width: 100%; height: 220px; background: #111; border: 1px solid #333; color: #00ff66; font-family: monospace; padding: 10px; border-radius: 4px; resize: vertical; font-size: 11px; }
 </style>
 </head>
 <body>
 
-  <!-- TopBar -->
   <div class="topbar">
     <button class="btn btn-primary" onclick="openModal('prompt-modal')">Prompt</button>
     <button class="btn" onclick="openModal('load-modal')">Load</button>
-    <span style="font-size: 12px; color: #888; margin-left: auto;">RetroStudio AI Visualizer v1.0</span>
+    <span style="font-size: 11px; color: #888; margin-left: auto;">RetroStudio VisualSource V4 AI Engine</span>
   </div>
 
-  <!-- Main Canvas & Inspector Area -->
   <div class="workspace">
-    <div class="canvas-container" id="canvas">
-      <svg id="svg-connections"></svg>
-      <div id="blocks-layer"></div>
+    <div class="canvas-viewport" id="viewport">
+      <div class="canvas-world" id="world">
+        <svg id="svg-connections"></svg>
+        <div id="blocks-layer"></div>
+      </div>
     </div>
 
-    <!-- Inspector (Exact match to RetroStudio Inspector UI) -->
+    <!-- Inspector -->
     <div class="sidebar" id="inspector">
-      <div class="sidebar-header" id="inspect-header">Select a Block</div>
+      <div class="sidebar-header" id="inspect-header">Выберите блок</div>
       <div style="overflow-y: auto; flex: 1;">
         <div class="sidebar-section">
           <div class="sidebar-section-title">Inputs</div>
@@ -133,11 +116,11 @@
     </div>
   </div>
 
-  <!-- Modal: Copy Prompt -->
+  <!-- Modal: Prompt -->
   <div class="modal-overlay" id="prompt-modal">
     <div class="modal">
-      <h3>Промт для ИИ</h3>
-      <p style="font-size: 12px; color: #aaa;">Вставьте вашу задачу вместо {Просьба пользователя} и скопируйте текст в любую нейросеть (ChatGPT, Claude, DeepSeek):</p>
+      <h3>Системный Промт для ИИ</h3>
+      <p style="font-size: 11px; color: #aaa;">Скопируйте этот текст в нейросеть (ChatGPT/DeepSeek), заменив заполнитель вашей задачей:</p>
       <textarea id="prompt-text" readonly></textarea>
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn" onclick="closeModal('prompt-modal')">Закрыть</button>
@@ -146,211 +129,211 @@
     </div>
   </div>
 
-  <!-- Modal: Load Code -->
+  <!-- Modal: Load -->
   <div class="modal-overlay" id="load-modal">
     <div class="modal">
-      <h3>Загрузить JSON от ИИ</h3>
-      <p style="font-size: 12px; color: #aaa;">Вставьте код (VisualSource format / JSON), полученный от ИИ:</p>
-      <textarea id="load-json" placeholder='{"Blocks": [...]}'></textarea>
+      <h3>Загрузить компактный скрипт от ИИ</h3>
+      <textarea id="load-json" placeholder='[{"id":"1", "block":"Click Detector Interaction", ...}]'></textarea>
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn" onclick="closeModal('load-modal')">Отмена</button>
-        <button class="btn btn-primary" onclick="loadScriptData()">Отобразить блоки</button>
+        <button class="btn btn-primary" onclick="loadScriptData()">Отобразить</button>
       </div>
     </div>
   </div>
 
 <script>
-  // Системный промт
-  const SYSTEM_PROMPT_TEMPLATE = `Ты ИИ для скриптинга в RetroStudio (Roblox). Твоя задача — сгенерировать точную структуру visual blocks скрипта в формате JSON (на основе VisualSource V3/V4).
+  // Системный Промт с учётом документации VisualSource V4
+  const SYSTEM_PROMPT_TEMPLATE = `Ты ИИ-скриптер для RetroStudio (Roblox). Генерируй скрипты строго по документации VisualSource V4 / code-blocks.
 
-ВАЖНО: Верни ТОЛЬКО чистый JSON без markdown-оберток (без \`\`\`json).
+СТРОГИЕ ПРАВИЛА RETROSTUDIO:
+1. Используй ТОЛЬКО официальные имена блоков:
+   - События: "Click Detector Interaction", "Touched Interaction" и т.д.
+   - Рандом/Переменные: "Random BrickColor", "Random Number" и т.д.
+   - Свойства: "Set Object Property", "Get Object Property" и т.д.
+2. ТИПЫ ДАННЫХ: Не путай BrickColor и Number/Color3! Для цвета блока используй "Random BrickColor", а не "Random Number".
+3. Формат ответа — СЖАТЫЙ JSON МАССИВ (без лишних разговоров и без markdown):
 
-Структура JSON должна соответствовать формату:
-{
-  "Blocks": [
-    {
-      "Id": "Block1",
-      "Type": "Control",
-      "Name": "For Loop",
-      "Color": "green",
-      "Subtext": "Start at 1 and increment by 1 until it equals 10",
-      "VisualPosition": [100, 50],
-      "Connections": [
-        {"TargetId": "Block2", "Type": "bottom", "Index": 0},
-        {"TargetId": "Block3", "Type": "bottom", "Index": 1}
-      ],
-      "Inputs": [],
-      "Outputs": []
-    },
-    {
-      "Id": "Block4",
-      "Type": "Property",
-      "Name": "Get Object Property",
-      "Color": "purple",
-      "Subtext": "Get ? of ?",
-      "VisualPosition": [350, 180],
-      "Connections": [],
-      "Inputs": [
-        {"Name": "Object", "Type": "Object", "Value": "Workspace.Part", "UseVariable": false},
-        {"Name": "Property", "Type": "String", "Value": "Anchored", "UseVariable": false}
-      ],
-      "Outputs": [
-        {"Name": "Value", "Value": "IsAnchoredVar"}
-      ]
-    }
-  ]
-}
+[
+  {
+    "id": "1",
+    "block": "Click Detector Interaction",
+    "cat": "event",
+    "sub": "Execute when script.Parent.ClickDetector is Clicked",
+    "next": "2",
+    "inputs": [],
+    "outputs": []
+  },
+  {
+    "id": "2",
+    "block": "Random BrickColor",
+    "cat": "variable",
+    "sub": "Color",
+    "next": "3",
+    "inputs": [],
+    "outputs": [{"name": "Value", "val": "Color"}]
+  },
+  {
+    "id": "3",
+    "block": "Set Object Property",
+    "cat": "property",
+    "sub": "Set \"BrickColor\" of script.Parent to Color",
+    "inputs": [
+      {"name": "Object", "type": "Object", "val": "script.Parent"},
+      {"name": "Property", "type": "String", "val": "BrickColor"},
+      {"name": "Value", "type": "Variant", "val": "Color"}
+    ],
+    "outputs": []
+  }
+]
 
-Цвета блоков (Color): "green" (логика/управление), "purple" (свойства/переменные), "blue" (действия).
-Типы соединений (Connections.Type): "bottom" (обычный переход вниз), "right" (для условий True/False).
+Категории (cat): "event" (синий), "control" (зеленый), "variable" (желтый), "property" (фиолетовый).
 
 Нужно сделать:
 {Просьба пользователя}`;
 
   document.getElementById('prompt-text').value = SYSTEM_PROMPT_TEMPLATE;
 
-  // Демо-данные
-  let currentScript = {
-    Blocks: [
-      {
-        Id: "B1", Name: "For Loop1", Color: "green",
-        Subtext: "Start at 1 and increment by 1 until it equals 10",
-        VisualPosition: [100, 40],
-        Connections: [
-          { TargetId: "B2", Type: "bottom", Index: 0 },
-          { TargetId: "B3", Type: "bottom", Index: 1 }
-        ],
-        Inputs: [], Outputs: []
-      },
-      {
-        Id: "B2", Name: "Continue Loop1", Color: "green", Subtext: "",
-        VisualPosition: [30, 160], Connections: [], Inputs: [], Outputs: []
-      },
-      {
-        Id: "B3", Name: "Break Loop1", Color: "green", Subtext: "",
-        VisualPosition: [210, 160], Connections: [], Inputs: [], Outputs: []
-      },
-      {
-        Id: "B4", Name: "If1", Color: "green", Subtext: "? == ?",
-        VisualPosition: [400, 40],
-        Connections: [{ TargetId: "B5", Type: "right" }],
-        Inputs: [], Outputs: []
-      },
-      {
-        Id: "B5", Name: "Get Object Property1", Color: "purple", Subtext: "Get ? of ?",
-        VisualPosition: [540, 160], Connections: [],
-        Inputs: [
-          { Name: "Object", Type: "Object", Value: "", UseVariable: false },
-          { Name: "Property", Type: "String", Value: "", UseVariable: false }
-        ],
-        Outputs: [{ Name: "Value", Value: "" }]
-      }
-    ]
-  };
+  // Демонстрационный скрипт (соответствует твоему второму скриншоту)
+  let currentScript = [
+    {
+      id: "1", block: "Click Detector Interaction1", cat: "event",
+      sub: "Execute when script.Parent.ClickDetector is Clicked", next: "2",
+      inputs: [], outputs: []
+    },
+    {
+      id: "2", block: "Random BrickColor1", cat: "variable",
+      sub: "Color", next: "3",
+      inputs: [], outputs: [{ name: "Value", val: "Color" }]
+    },
+    {
+      id: "3", block: "Set Object Property1", cat: "property",
+      sub: 'Set "BrickColor" of script.Parent to Color',
+      inputs: [
+        { name: "Object", type: "Object", val: "script.Parent", useVar: false },
+        { name: "Property", type: "String", val: "BrickColor", useVar: false },
+        { name: "Value", type: "Variant", val: "Color", useVar: true }
+      ],
+      outputs: []
+    }
+  ];
 
   let selectedBlockId = null;
 
-  function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-  function copyPrompt() {
-    navigator.clipboard.writeText(document.getElementById('prompt-text').value);
-    alert('Промт скопирован в буфер обмена!');
-    closeModal('prompt-modal');
+  // Pan & Zoom Engine
+  let scale = 1, panX = 100, panY = 50, isDragging = false, startX = 0, startY = 0;
+  const viewport = document.getElementById('viewport');
+  const world = document.getElementById('world');
+
+  function updateTransform() {
+    world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+
+  viewport.addEventListener('mousedown', (e) => {
+    if (e.button === 1 || e.button === 2 || e.shiftKey || e.target === viewport) {
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      updateTransform();
+    }
+  });
+
+  window.addEventListener('mouseup', () => isDragging = false);
+  viewport.addEventListener('contextmenu', e => e.preventDefault());
+
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    scale = Math.min(Math.max(0.3, scale * zoomFactor), 2.5);
+    updateTransform();
+  });
+
+  // Автоматический расчет расположения блоков по топологии
+  function calculatePositions(blocks) {
+    let startY = 40;
+    blocks.forEach((b, index) => {
+      b.x = 200;
+      b.y = startY;
+      startY += 120;
+    });
   }
 
   function renderScript() {
+    calculatePositions(currentScript);
     const layer = document.getElementById('blocks-layer');
     const svg = document.getElementById('svg-connections');
     layer.innerHTML = '';
     svg.innerHTML = '';
 
-    currentScript.Blocks.forEach(block => {
-      // Отрисовка блока
+    currentScript.forEach(block => {
       const el = document.createElement('div');
-      el.className = `block color-${block.Color || 'green'} ${selectedBlockId === block.Id ? 'selected' : ''}`;
-      el.style.left = block.VisualPosition[0] + 'px';
-      el.style.top = block.VisualPosition[1] + 'px';
-      el.onclick = (e) => { e.stopPropagation(); selectBlock(block.Id); };
+      el.className = `block cat-${block.cat || 'control'} ${selectedBlockId === block.id ? 'selected' : ''}`;
+      el.style.left = block.x + 'px';
+      el.style.top = block.y + 'px';
+      el.onclick = (e) => { e.stopPropagation(); selectBlock(block.id); };
 
       el.innerHTML = `
-        <div class="block-title">${block.Name}</div>
-        ${block.Subtext ? `<div class="block-sub">${block.Subtext}</div>` : ''}
+        <div class="block-title">${block.block}</div>
+        ${block.sub ? `<div class="block-sub">${block.sub}</div>` : ''}
       `;
 
-      // Добавление визуальных узлов подключения
-      if (block.Connections && block.Connections.length > 0) {
-        const hasRight = block.Connections.some(c => c.Type === 'right');
-        if (hasRight) {
-          const nodeRight = document.createElement('div');
-          nodeRight.className = 'node-right';
-          nodeRight.innerHTML = `<div class="node node-red"></div>`;
-          el.appendChild(nodeRight);
-        } else {
-          const nodesCont = document.createElement('div');
-          nodesCont.className = 'nodes-container';
-          block.Connections.forEach(() => {
-            nodesCont.innerHTML += `<div class="node node-orange"></div>`;
-          });
-          el.appendChild(nodesCont);
-        }
+      if (block.next || block.altNext) {
+        const nodesCont = document.createElement('div');
+        nodesCont.className = 'nodes-bottom';
+        nodesCont.innerHTML = `<div class="node node-orange"></div>`;
+        if (block.altNext) nodesCont.innerHTML += `<div class="node node-orange"></div>`;
+        el.appendChild(nodesCont);
       }
 
       layer.appendChild(el);
 
-      // Отрисовка линий связей (SVG connections)
-      if (block.Connections) {
-        block.Connections.forEach((conn, idx) => {
-          const target = currentScript.Blocks.find(b => b.Id === conn.TargetId);
-          if (target) {
-            let startX = block.VisualPosition[0] + 80;
-            let startY = block.VisualPosition[1] + 70;
+      // Отрисовка линий соединений
+      if (block.next) {
+        const target = currentScript.find(b => b.id === block.next);
+        if (target) {
+          const startX = block.x + 90;
+          const startY = block.y + 75;
+          const endX = target.x + 90;
+          const endY = target.y;
 
-            if (conn.Type === 'right') {
-              startX = block.VisualPosition[0] + 160;
-              startY = block.VisualPosition[1] + 35;
-            } else if (block.Connections.length > 1) {
-              const step = 160 / (block.Connections.length + 1);
-              startX = block.VisualPosition[0] + step * (idx + 1);
-            }
-
-            const endX = target.VisualPosition[0] + 80;
-            const endY = target.VisualPosition[1];
-
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const d = `M ${startX} ${startY} C ${startX} ${startY + 30}, ${endX} ${endY - 30}, ${endX} ${endY}`;
-            path.setAttribute('d', d);
-            path.setAttribute('stroke', conn.Type === 'right' ? '#ef4444' : '#f97316');
-            path.setAttribute('stroke-width', '4');
-            path.setAttribute('fill', 'none');
-            svg.appendChild(path);
-          }
-        });
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const d = `M ${startX} ${startY} C ${startX} ${startY + 20}, ${endX} ${endY - 20}, ${endX} ${endY}`;
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', '#f97316');
+          path.setAttribute('stroke-width', '4');
+          path.setAttribute('fill', 'none');
+          svg.appendChild(path);
+        }
       }
     });
+    updateTransform();
   }
 
   function selectBlock(id) {
     selectedBlockId = id;
     renderScript();
 
-    const block = currentScript.Blocks.find(b => b.Id === id);
+    const block = currentScript.find(b => b.id === id);
     const header = document.getElementById('inspect-header');
     const inputsCont = document.getElementById('inputs-container');
     const outputsCont = document.getElementById('outputs-container');
 
-    header.innerText = block.Name;
+    header.innerText = block.block;
     inputsCont.innerHTML = '';
     outputsCont.innerHTML = '';
 
-    if (block.Inputs && block.Inputs.length > 0) {
-      block.Inputs.forEach(inp => {
+    if (block.inputs && block.inputs.length > 0) {
+      block.inputs.forEach(inp => {
         inputsCont.innerHTML += `
           <div class="field-group">
-            <label class="field-label">${inp.Name} (${inp.Type})</label>
-            <input type="text" class="field-input" value="${inp.Value || ''}" placeholder="${inp.Type === 'Object' ? 'Object Path or Variable' : inp.Type}">
-            <label class="field-checkbox" style="margin-top: 6px;">
-              <input type="checkbox" ${inp.UseVariable ? 'checked' : ''}> Use Variable?
-            </label>
+            <label class="field-label">${inp.name} (${inp.type})</label>
+            <input type="text" class="field-input" value="${inp.val || ''}">
           </div>
         `;
       });
@@ -358,12 +341,12 @@
       inputsCont.innerHTML = '<div style="font-size:11px; color:#555; text-align:center;">No Inputs</div>';
     }
 
-    if (block.Outputs && block.Outputs.length > 0) {
-      block.Outputs.forEach(out => {
+    if (block.outputs && block.outputs.length > 0) {
+      block.outputs.forEach(out => {
         outputsCont.innerHTML += `
           <div class="field-group">
-            <label class="field-label">${out.Name}</label>
-            <input type="text" class="field-input" value="${out.Value || ''}" placeholder="Variable Name">
+            <label class="field-label">${out.name}</label>
+            <input type="text" class="field-input" value="${out.val || ''}">
           </div>
         `;
       });
@@ -376,20 +359,27 @@
     const raw = document.getElementById('load-json').value;
     try {
       const data = JSON.parse(raw);
-      if (data.Blocks) {
+      if (Array.isArray(data)) {
         currentScript = data;
         selectedBlockId = null;
         renderScript();
         closeModal('load-modal');
       } else {
-        alert('Ошибка: в JSON должен быть массив "Blocks"');
+        alert('Ошибка: Ожидается JSON массив блоков');
       }
     } catch (e) {
-      alert('Некорректный формат JSON!');
+      alert('Ошибка парсинга JSON');
     }
   }
 
-  // Начальный рендер
+  function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  function copyPrompt() {
+    navigator.clipboard.writeText(document.getElementById('prompt-text').value);
+    alert('Промт скопирован!');
+    closeModal('prompt-modal');
+  }
+
   renderScript();
 </script>
 </body>
