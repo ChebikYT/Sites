@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Викторина</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        .container { max-width: 650px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .top-nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-btn { flex: 1; padding: 12px; border: none; background-color: #e2e8f0; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .nav-btn.active { background-color: #4f46e5; color: white; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; margin-bottom: 10px; resize: vertical; }
+        .btn { display: inline-block; width: 100%; padding: 12px; background-color: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background-color: #4338ca; }
+        
+        .prompt-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 12px; font-family: monospace; white-space: pre-wrap; font-size: 13px; line-height: 1.5; }
+        
+        /* Полоса прогресса */
+        .progress-bar-container { display: flex; gap: 6px; margin-bottom: 20px; width: 100%; }
+        .progress-segment { flex: 1; height: 10px; background-color: #e2e8f0; border-radius: 5px; transition: background-color 0.3s; }
+        .progress-segment.correct { background-color: #22c55e; }
+        .progress-segment.wrong { background-color: #ef4444; }
+        .progress-segment.active { border: 2px solid #4f46e5; }
+
+        /* Карточка вопроса */
+        .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .question-card { background: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; }
+        .question-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        .options { display: flex; flex-direction: column; gap: 10px; }
+        .option-btn { padding: 12px 15px; text-align: left; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; font-size: 15px; transition: 0.2s; }
+        .option-btn:hover:not(:disabled) { background: #f1f5f9; }
+        .option-btn.correct { background-color: #dcfce7 !important; border-color: #22c55e !important; color: #15803d; font-weight: bold; }
+        .option-btn.wrong { background-color: #fee2e2 !important; border-color: #ef4444 !important; color: #b91c1c; }
+        
+        /* Кнопки навигации по вопросам */
+        .controls { display: flex; justify-content: space-between; gap: 10px; }
+        .ctrl-btn { flex: 1; padding: 10px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .result-box { text-align: center; padding: 25px; background: #e0e7ff; border-radius: 8px; font-size: 22px; font-weight: bold; color: #3730a3; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-nav">
+        <button class="nav-btn active" onclick="switchTab('prompt')">Prompt</button>
+        <button class="nav-btn" onclick="switchTab('load')">Load</button>
+    </div>
+
+    <!-- Вкладка Prompt -->
+    <div id="tab-prompt" class="tab-content active">
+        <h3>Инструкция для ИИ</h3>
+        <p style="margin-bottom: 10px; font-size: 14px; color: #666;">Скопируй этот промт, вставь тему вместо {просьба} и отправь ИИ:</p>
+        <div class="prompt-box" id="promptText">Не создавай готовую интерактивную викторину и не пиши никаких вступительных или пояснительных слов! Мне нужен ТОЛЬКО чистый JSON-код без какого-либо текста до или после него и без markdown-разметки (не используй ```json).
+
+Строго следуй этому формату JSON:
+{
+  "title": "Название викторины",
+  "questions": [
+    {
+      "question": "Текст вопроса",
+      "options": ["Вариант 1", "Вариант 2", "Вариант 3", "Вариант 4"],
+      "answer": 0
+    }
+  ]
+}
+Где "answer" — это индекс правильного ответа (начиная с 0).
+
+Тема викторины:
+{просьба}</div>
+        <button class="btn" onclick="copyPrompt()">Скопировать Промт</button>
+    </div>
+
+    <!-- Вкладка Load -->
+    <div id="tab-load" class="tab-content">
+        <textarea id="jsonInput" placeholder="Вставьте сюда JSON-код от ИИ..."></textarea>
+        <button class="btn" onclick="loadQuiz()">Загрузить</button>
+    </div>
+
+    <!-- Область отображения викторины -->
+    <div id="quizContainer" style="display: none; margin-top: 25px;">
+        <div class="quiz-header">
+            <h2 id="quizTitle">Викторина</h2>
+            <span id="scoreText" style="font-weight: bold;">Счет: 0</span>
+        </div>
+
+        <!-- Полоса прогресса по вопросам -->
+        <div class="progress-bar-container" id="progressBar"></div>
+
+        <!-- Карточка текущего вопроса -->
+        <div class="question-card" id="questionCard">
+            <div class="question-title" id="questionTitle"></div>
+            <div class="options" id="optionsContainer"></div>
+        </div>
+
+        <!-- Управление -->
+        <div class="controls" id="controls">
+            <button class="ctrl-btn" id="prevBtn" onclick="prevQuestion()">Назад</button>
+            <button class="ctrl-btn" id="nextBtn" onclick="nextQuestion()">Вперед</button>
+        </div>
+
+        <!-- Финальный результат -->
+        <div id="resultBox" class="result-box"></div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        if (tab === 'prompt') {
+            document.querySelectorAll('.nav-btn')[0].classList.add('active');
+            document.getElementById('tab-prompt').classList.add('active');
+        } else {
+            document.querySelectorAll('.nav-btn')[1].classList.add('active');
+            document.getElementById('tab-load').classList.add('active');
+        }
+    }
+
+    function copyPrompt() {
+        const text = document.getElementById('promptText').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Промт скопирован!');
+        });
+    }
+
+    let quizData = null;
+    let currentIdx = 0;
+    let userAnswers = []; // Хранит выбранные ответы (-1, если еще не ответил)
+    let score = 0;
+
+    function loadQuiz() {
+        const rawInput = document.getElementById('jsonInput').value.trim();
+        if (!rawInput) return alert('Вставьте код викторины!');
+
+        try {
+            // Очистка от возможной markdown-разметки
+            const cleanJson = rawInput.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/, '').trim();
+            quizData = JSON.parse(cleanJson);
+
+            startQuiz();
+        } catch (e) {
+            alert('Ошибка в формате кода. Убедитесь, что вставили корректный JSON без постороннего текста.');
+        }
+    }
+
+    function startQuiz() {
+        currentIdx = 0;
+        score = 0;
+        userAnswers = new Array(quizData.questions.length).fill(-1);
+
+        document.getElementById('quizTitle').innerText = quizData.title || "Викторина";
+        document.getElementById('quizContainer').style.display = 'block';
+        document.getElementById('resultBox').style.display = 'none';
+        document.getElementById('questionCard').style.display = 'block';
+        document.getElementById('controls').style.display = 'flex';
+
+        createProgressBar();
+        showQuestion();
+    }
+
+    function createProgressBar() {
+        const bar = document.getElementById('progressBar');
+        bar.innerHTML = '';
+        for (let i = 0; i < quizData.questions.length; i++) {
+            const seg = document.createElement('div');
+            seg.className = 'progress-segment';
+            seg.id = `seg-${i}`;
+            bar.appendChild(seg);
+        }
+    }
+
+    function updateProgressBar() {
+        for (let i = 0; i < quizData.questions.length; i++) {
+            const seg = document.getElementById(`seg-${i}`);
+            seg.className = 'progress-segment';
+            
+            if (i === currentIdx) seg.classList.add('active');
+
+            if (userAnswers[i] !== -1) {
+                if (userAnswers[i] === quizData.questions[i].answer) {
+                    seg.classList.add('correct');
+                } else {
+                    seg.classList.add('wrong');
+                }
+            }
+        }
+    }
+
+    function showQuestion() {
+        updateProgressBar();
+        const q = quizData.questions[currentIdx];
+        
+        document.getElementById('questionTitle').innerText = `${currentIdx + 1}. ${q.question}`;
+        
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+
+        const hasAnswered = userAnswers[currentIdx] !== -1;
+
+        q.options.forEach((opt, optIndex) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+
+            if (hasAnswered) {
+                btn.disabled = true;
+                if (optIndex === q.answer) btn.classList.add('correct');
+                if (userAnswers[currentIdx] === optIndex && optIndex !== q.answer) {
+                    btn.classList.add('wrong');
+                }
+            } else {
+                btn.onclick = () => selectAnswer(optIndex);
+            }
+
+            container.appendChild(btn);
+        });
+
+        // Настройка кнопок Назад/Вперед
+        document.getElementById('prevBtn').disabled = currentIdx === 0;
+        document.getElementById('nextBtn').disabled = currentIdx === quizData.questions.length - 1;
+
+        updateScoreText();
+    }
+
+    function selectAnswer(optIndex) {
+        userAnswers[currentIdx] = optIndex;
+
+        if (optIndex === quizData.questions[currentIdx].answer) {
+            score++;
+        }
+
+        showQuestion();
+
+        // Если ответили на все вопросы — показываем финал
+        if (!userAnswers.includes(-1)) {
+            setTimeout(showResult, 500);
+        }
+    }
+
+    function nextQuestion() {
+        if (currentIdx < quizData.questions.length - 1) {
+            currentIdx++;
+            showQuestion();
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIdx > 0) {
+            currentIdx--;
+            showQuestion();
+        }
+    }
+
+    function updateScoreText() {
+        document.getElementById('scoreText').innerText = `Счет: ${score} / ${quizData.questions.length}`;
+    }
+
+    function showResult() {
+        document.getElementById('resultBox').innerText = `Викторина завершена!\nВаш результат: ${score} из ${quizData.questions.length}`;
+        document.getElementById('resultBox').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
